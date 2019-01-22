@@ -1,6 +1,7 @@
 body {
   margin: 20px auto auto;
   font-family: Arial, sans-serif;
+  white-space: nowrap;
 }
 
 svg {
@@ -36,9 +37,14 @@ svg {
 }
 
 .axis text {
-  font-size: 9pt;
+  font-size: 10pt;
 }
 
 text {
-  font-size: 9pt;
+  font-size: 10pt;
+}
+
+text.title {
+  font-size: 12pt;
+  font-weight: 700;
 }
