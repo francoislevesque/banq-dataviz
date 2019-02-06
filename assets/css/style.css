@@ -1,6 +1,6 @@
 body {
   margin: 20px auto auto;
-  font-family: Arial, sans-serif;
+  font-family: 'Roboto', sans-serif;
   white-space: nowrap;
 }
 
@@ -47,4 +47,30 @@ text {
 text.title {
   font-size: 12pt;
   font-weight: 700;
+}
+
+.keyword text {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.keyword text.is-white {
+  fill: white;
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin-bottom: 0.4rem;
+}
+h2 {
+  font-size: 1rem;
+  font-weight: 400;
+  color: #555;
+  margin-top: 0;
+  margin-bottom: 2rem;
+}
+
+.t-center {
+  text-align: center;
 }
