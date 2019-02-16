@@ -13,6 +13,8 @@ function initialize([data, locale]) {
   
   d3.timeFormatDefaultLocale(locale);
 
+  // Remove duplicates
+
   var dataUniqueSongs = {};
 
   for (var i = 0, len = data.length; i < len; i++)
@@ -22,9 +24,9 @@ function initialize([data, locale]) {
   for (var key in dataUniqueSongs)
     data.push(dataUniqueSongs[key]);
 
-  makeAggregateGraphs(data);
-
   buildTree(data);
+
+  makeAggregateGraphs(data);
 }
 
 function buildTree(data) {
@@ -51,6 +53,18 @@ function buildTree(data) {
 
   childrenStats = linkAdaptations(roots, adapations, childrenStats, 1);
 
+  var stats = childrenStats.map((s, i) => {
+    return {
+      label: `Niveau ${i}`,
+      value: s
+    }
+  });
+
+  stats.push({
+    label: 'Total',
+    value: data.length
+  })
+
   // Configuration
   const margin = {
     top: 20,
@@ -67,21 +81,29 @@ function buildTree(data) {
     .attr('width', width + margin.left + margin.right)
     .attr('height', height + margin.top + margin.bottom);
     
-  const g = svg.append('g')
+  var g = svg.append('g')
     .attr('transform', `translate(${margin.left}, ${margin.top})`);
   
   g.selectAll('text')
-    .data(childrenStats)
+    .data(stats)
     .enter()
     .append('text')
-    .text((d, i) => `Niveau ${i}: ${d}`)
+    .text((d, i) => `${d.label}:`)
     .attr("y", (d, i) => 8 + i * 25)
-    .attr("x", 20);
+    .attr("x", 70)
+    .attr("text-anchor", "end");
 
-  g.append('text')
-    .text(`Total: ${data.length}`)
-    .attr("y", (d, i) => 8 + childrenStats.length * 25)
-    .attr("x", 20);
+  g = svg.append('g')
+    .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+  g.selectAll('text')
+    .data(stats)
+    .enter()
+    .append('text')
+    .text((d, i) => `${d.value}`)
+    .attr("y", (d, i) => 8 + i * 25)
+    .attr("x", 80)
+    .attr("text-anchor", "start");
 }
 
 function linkAdaptations(roots, adaptations, childrenStats, deepness) {
