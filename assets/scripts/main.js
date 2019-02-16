@@ -89,7 +89,7 @@ function buildTree(data) {
   const width = 200 - margin.left - margin.right;
   const height = 400 - margin.top - margin.bottom;
 
-  const svg = d3.select('body')
+  const svg = d3.select('#content')
     .append('svg')
     .attr('width', width + margin.left + margin.right)
     .attr('height', height + margin.top + margin.bottom);
@@ -232,7 +232,7 @@ function makeBandGraph(dataset, title) {
   const xAxis = d3.axisTop(x).ticks(5);
   const yAxis = d3.axisLeft(y);
 
-  const svg = d3.select('body')
+  const svg = d3.select('#content')
     .append('svg')
     .attr('width', width + margin.left + margin.right)
     .attr('height', height + margin.top + margin.bottom);
