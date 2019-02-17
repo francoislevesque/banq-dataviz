@@ -279,7 +279,7 @@ class Chord {
         groupG.select("title")
             .text((d, i) => {
                 return this.numberWithCommas(d.value) 
-                    + " chansons venant du " 
+                    + " chansons venant de " 
                     + this.regions[i].name;
             });
 
