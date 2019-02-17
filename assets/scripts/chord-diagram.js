@@ -8,7 +8,7 @@ class Chord {
         this.width = 1200
         this.height = 1200
         this.outerRadius = Math.min(this.width, this.height) / 2 - 120
-        this.innerRadius = this.outerRadius - 25
+        this.innerRadius = this.outerRadius - 35
 
         this.dateRange = [-10000,10000];
         this.artist = null;
@@ -144,7 +144,6 @@ class Chord {
                 let originCountry = (parentCountryText != "" && this.countries[parentCountryText]) ? this.countries[parentCountryText].key : otherCountry;
 
                 matrix[originCountry][destinationCountry]++;
-                matrix[destinationCountry][originCountry]++;
             }
         });
 
@@ -315,7 +314,7 @@ class Chord {
                 //store the midpoint angle in the data object
                 
                 return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
-                    " translate(" + (vm.innerRadius - 100) + ")" + 
+                    " translate(" + (vm.outerRadius - 100) + ")" + 
                     (d.angle > Math.PI ? " rotate(180)" : " rotate(0)"); 
                 //include the rotate zero so that transforms can be interpolated
             })
@@ -337,7 +336,7 @@ class Chord {
                     //store the midpoint angle in the data object
                     
                     return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
-                        " translate(" + (vm.innerRadius + 26) + ")" + 
+                        " translate(" + (vm.outerRadius + 6) + ")" + 
                         (d.angle > Math.PI ? " rotate(180)" : " rotate(0)"); 
                     //include the rotate zero so that transforms can be interpolated
                 })
@@ -366,15 +365,15 @@ class Chord {
             .text(function(d) {
                 if (vm.regions[d.target.index].name !== vm.regions[d.source.index].name) {
                     return [vm.numberWithCommas(d.source.value),
-                            " exports from ",
+                            " adaptations de ",
                             vm.regions[d.source.index].name,
-                            " to ",
+                            " à ",
                             vm.regions[d.target.index].name,
                             "\n",
                             vm.numberWithCommas(d.target.value),
-                            " exports from ",
+                            " adaptations de ",
                             vm.regions[d.target.index].name,
-                            " to ",
+                            " à ",
                             vm.regions[d.source.index].name
                             ].join(""); 
                         //joining an array of many strings is faster than
@@ -383,7 +382,7 @@ class Chord {
                 } 
                 else { //source and target are the same
                     return vm.numberWithCommas(d.source.value) 
-                        + " exports ended in " 
+                        + " adaptations restées à " 
                         + vm.regions[d.source.index].name;
                 }
             });
@@ -418,7 +417,7 @@ class Chord {
         //the "unfade" is handled with CSS :hover class on g#circle
         //you could also do it using a mouseout event:
         
-        this.g.on("mouseout", function() {
+        groupG.on("mouseout", function() {
             if (vm == vm.g.node() )
                 //only respond to mouseout of the entire circle
                 //not mouseout events for sub-components
