@@ -20,13 +20,40 @@ function initialize([data, locale]) {
   for (var i = 0, len = data.length; i < len; i++)
   dataUniqueSongs[data[i]['Id_Chanson']] = data[i];
 
-  data = new Array();
+  let uniques = new Array();
   for (var key in dataUniqueSongs)
-    data.push(dataUniqueSongs[key]);
+  uniques.push(dataUniqueSongs[key]);
 
-  buildTree(data);
+  buildTree(uniques);
 
-  makeAggregateGraphs(data);
+  rolesGraph(data);
+
+  makeAggregateGraphs(uniques);
+}
+
+function rolesGraph(data) {
+
+  let aggregate = {};
+    
+  Object.values(data).forEach(d => {
+    if (d['Relation_Chanson_Autorite'] !== undefined) {
+      let text = d['Relation_Chanson_Autorite'].split(';')[0];
+      if (text != "") {
+        aggregate[text] = {
+          count: (aggregate[text] === undefined) ? 1 : +aggregate[text].count + 1,
+          label: text
+        }
+      }
+    }
+  });
+
+  aggregate = Object.values(aggregate);
+
+  aggregate.sort((a, b) => {
+    return b.count - a.count;
+  });
+
+  makeBandGraph(aggregate, "Roles");
 }
 
 function buildTree(data) {
@@ -67,16 +94,16 @@ function buildTree(data) {
 
   // Configuration
   const margin = {
-    top: 20,
+    top: 60,
     right: 10,
     bottom: 10,
     left: 10
   };
 
-  const width = 400 - margin.left - margin.right;
+  const width = 200 - margin.left - margin.right;
   const height = 400 - margin.top - margin.bottom;
 
-  const svg = d3.select('body')
+  const svg = d3.select('#content')
     .append('svg')
     .attr('width', width + margin.left + margin.right)
     .attr('height', height + margin.top + margin.bottom);
@@ -96,14 +123,18 @@ function buildTree(data) {
   g = svg.append('g')
     .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
-  g.selectAll('text')
-    .data(stats)
-    .enter()
+  g.append('text')
+    .text(`Total: ${data.length}`)
+    .attr("y", (d, i) => 8 + childrenStats.length * 25)
+    .attr("x", 20);
+
+  svg.append('g')
     .append('text')
-    .text((d, i) => `${d.value}`)
-    .attr("y", (d, i) => 8 + i * 25)
-    .attr("x", 80)
-    .attr("text-anchor", "start");
+    .text("Niveaux de nesting")
+    .attr('class', 'title')
+    .attr('dominant-baseline', 'hanging')
+    .attr('x', 30)
+    .attr('y', 4);
 }
 
 function linkAdaptations(roots, adaptations, childrenStats, deepness) {
@@ -142,6 +173,8 @@ function makeAggregateGraphs(data) {
   var stats = {};
 
   let aggregatesAttributes = [
+    'Type_Autorite',
+    'Lieux_Naissances_Autorite',
     'Lieux_Activites_Autorite',
     'Annee_Creation_Chanson',
     'Langues_Chanson'
@@ -171,6 +204,10 @@ function makeAggregateGraphs(data) {
     return b.count - a.count;
   });
 
+  stats['Lieux_Naissances_Autorite'].sort((a, b) => {
+    return b.count - a.count;
+  });
+
   stats['Langues_Chanson'].sort((a, b) => {
     return b.count - a.count;
   });
@@ -180,22 +217,26 @@ function makeAggregateGraphs(data) {
   });
 
   aggregatesAttributes.forEach(a => {
-    makeBandGraph(stats[a]);
+    makeBandGraph(stats[a], a);
   });
 }
 
-function makeBandGraph(dataset) {
+function makeBandGraph(dataset, title) {
 
+  //dataset = dataset.slice(0, 10);
   // Configuration
   const margin = {
-    top: 20,
-    right: 10,
-    bottom: 100,
+    top: 60,
+    right: 50,
+    bottom: 10,
     left: 140
   };
 
-  const width = 400 - margin.left - margin.right;
-  const height = 1800 - margin.top - margin.bottom;
+  const fullWidth = 500;
+  const fullHeight = dataset.length;
+
+  const width = fullWidth - margin.left - margin.right;
+  const height = fullHeight * 25;
 
   const x = d3.scaleLinear()
     .domain([0, d3.max(dataset, c => c.count)])
@@ -209,7 +250,7 @@ function makeBandGraph(dataset) {
   const xAxis = d3.axisTop(x).ticks(5);
   const yAxis = d3.axisLeft(y);
 
-  const svg = d3.select('body')
+  const svg = d3.select('#content')
     .append('svg')
     .attr('width', width + margin.left + margin.right)
     .attr('height', height + margin.top + margin.bottom);
@@ -227,6 +268,16 @@ function makeBandGraph(dataset) {
     .attr("x", 0)
     .attr("y", d => y(d.label));
 
+  g.selectAll('text')
+    .data(dataset)
+    .enter()
+    .append('text')
+    .attr("class", "text")
+    .text(d => d.count)
+    .attr('dominant-baseline', 'central')
+    .attr("x", d => 4 + x(d.count))
+    .attr("y", d => y.bandwidth() / 2 + y(d.label));
+
   g.append('g')
     .attr('class', 'x axis')
     .call(xAxis);
@@ -234,4 +285,12 @@ function makeBandGraph(dataset) {
   g.append('g')
     .attr('class', 'y axis')
     .call(yAxis);
+
+  svg.append('g')
+    .append('text')
+    .text(title)
+    .attr('class', 'title')
+    .attr('dominant-baseline', 'hanging')
+    .attr('x', margin.left)
+    .attr('y', 4);
 }
