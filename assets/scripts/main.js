@@ -13,8 +13,6 @@ function initialize([data, locale]) {
   
   d3.timeFormatDefaultLocale(locale);
 
-  // Remove duplicates
-
   var dataUniqueSongs = {};
 
   for (var i = 0, len = data.length; i < len; i++)
@@ -80,18 +78,6 @@ function buildTree(data) {
 
   childrenStats = linkAdaptations(roots, adapations, childrenStats, 1);
 
-  var stats = childrenStats.map((s, i) => {
-    return {
-      label: `Niveau ${i}`,
-      value: s
-    }
-  });
-
-  stats.push({
-    label: 'Total',
-    value: data.length
-  })
-
   // Configuration
   const margin = {
     top: 60,
@@ -103,25 +89,21 @@ function buildTree(data) {
   const width = 200 - margin.left - margin.right;
   const height = 400 - margin.top - margin.bottom;
 
-  const svg = d3.select('#content')
+  const svg = d3.select('body')
     .append('svg')
     .attr('width', width + margin.left + margin.right)
     .attr('height', height + margin.top + margin.bottom);
     
-  var g = svg.append('g')
+  const g = svg.append('g')
     .attr('transform', `translate(${margin.left}, ${margin.top})`);
   
   g.selectAll('text')
-    .data(stats)
+    .data(childrenStats)
     .enter()
     .append('text')
-    .text((d, i) => `${d.label}:`)
+    .text((d, i) => `Niveau ${i}: ${d}`)
     .attr("y", (d, i) => 8 + i * 25)
-    .attr("x", 70)
-    .attr("text-anchor", "end");
-
-  g = svg.append('g')
-    .attr('transform', `translate(${margin.left}, ${margin.top})`);
+    .attr("x", 20);
 
   g.append('text')
     .text(`Total: ${data.length}`)
@@ -250,7 +232,7 @@ function makeBandGraph(dataset, title) {
   const xAxis = d3.axisTop(x).ticks(5);
   const yAxis = d3.axisLeft(y);
 
-  const svg = d3.select('#content')
+  const svg = d3.select('body')
     .append('svg')
     .attr('width', width + margin.left + margin.right)
     .attr('height', height + margin.top + margin.bottom);
