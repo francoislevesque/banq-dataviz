@@ -267,9 +267,9 @@ function init (data_) {
         var active;
 
         context.clearRect(0, 0, fullWidth, fullHeight);
-        context.fillStyle = 'steelblue';
+        context.fillStyle = "rgba(0,20,80,0.1)";
         context.strokeWidth = 1;
-        context.strokeStyle = 'white';
+        context.strokeStyle = 'rgba(0,0,0,0.1)';
 
         // if an index parameter is supplied, we only want to draw points
         // with indices in that array
@@ -299,9 +299,8 @@ function init (data_) {
         // ensure that the actively selected point is drawn last
         // so it appears at the top of the draw order
         if(active) {
-            context.fillStyle = 'red';
+            context.fillStyle = "rgba(0,120,180,0.6)";
             drawPoint(active);
-            context.fillStyle = 'steelblue';
         }
     }
 
