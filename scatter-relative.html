@@ -109,9 +109,10 @@ function init (data_) {
     });
 
     var data = Object.values(artists).filter(artist => artist.score_level_0 > 10).map((artist, i) => {
+        let total = artist.score_level_0;
         return {
-            x: artist.score_level_minus_1 / artist.score_level_0,
-            y: artist.score_level_plus_1 / artist.score_level_0,
+            x: artist.score_level_minus_1 / total,
+            y: artist.score_level_plus_1 / total,
             i: i,
             size: artist.score_level_0 / 10,
             label: artist.name,
@@ -122,7 +123,7 @@ function init (data_) {
     // constants
     var numberPoints = data.length;
     var subsetSize = 150;
-    var zoomEndDelay = 250;
+    var zoomEndDelay = 100;
 
     // timeout function
     var zoomEndTimeout;
@@ -162,7 +163,6 @@ function init (data_) {
     // ranges, scales, axis, objects
     var xRange = d3.extent(data, function(d) { return d.x });
     var yRange = d3.extent(data, function(d) { return d.y });
-    console.log(yRange);
 
     var xScale = d3.scale.linear()
         .domain([xRange[0], xRange[1]])
