@@ -22,11 +22,55 @@ function initialize([data, locale]) {
   for (var key in dataUniqueSongs)
   uniques.push(dataUniqueSongs[key]);
 
+  let originals = uniques.filter(s => s['Id_Chanson_Parent'] == "")
+  let adaptations = uniques.filter(s => s['Id_Chanson_Parent'] != "")
+  let total = 0;
+  originals.forEach(o => {
+    if (adaptations.filter(a => {
+      return o['Id_Chanson'] == a['Id_Chanson_Parent']
+    }).length == 0) {
+      total++;
+    }
+  })
+
+  console.log("Chansons originales jamais adaptés:", total)
+
   buildTree(uniques);
 
+  entityGraph(data);
   rolesGraph(data);
 
   makeAggregateGraphs(uniques);
+}
+
+function entityGraph(data) {
+
+  let aggregate = {};
+    
+  Object.values(data).forEach(d => {
+    if (d['Forme_Retenue_Autorite'] !== undefined && d['Relation_Chanson_Autorite'].includes('Auteur') && d['Id_Chanson_Parent'] != '') {
+      let text = d['Forme_Retenue_Autorite'].split(';')[0];
+      if (text != "") {
+        aggregate[text] = {
+          count: (aggregate[text] === undefined) ? 1 : +aggregate[text].count + 1,
+          label: text
+        }
+      }
+    }
+  });
+
+  aggregate = Object.values(aggregate);
+
+  aggregate.sort((a, b) => {
+    return b.count - a.count;
+  });
+
+  console.log("5", aggregate.filter(a => a.count > 5).length)
+  console.log("10", aggregate.filter(a => a.count > 10).length)
+  console.log("20", aggregate.filter(a => a.count > 20).length)
+  console.log("50", aggregate.filter(a => a.count > 50).length)
+
+  makeBandGraph(aggregate, "Entitées");
 }
 
 function rolesGraph(data) {
@@ -121,7 +165,7 @@ function buildTree(data) {
 
 function linkAdaptations(roots, adaptations, childrenStats, deepness) {
   let newAdaptations = {};
-  let newRoots = {};
+  let newRoots = {}; 
 
   for (let i in adaptations) {
     let a = adaptations[i];

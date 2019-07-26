@@ -32,7 +32,7 @@ class Chord {
 
         //create the chord path data generator for the chords
         this.path = d3.svg.chord()
-            .radius(this.innerRadius - 4);// subtracted 4 to separate the ribbon
+            .radius(this.innerRadius - 1);// subtracted 4 to separate the ribbon
 
         this.last_layout; //store layout between updates
         this.regions; //store neighbourhood data outside data-reading function
@@ -42,7 +42,6 @@ class Chord {
     
             for (var i = 0, len = data.length; i < len; i++) {
         
-                let newRole = vm.getFirstValue(data[i]['Relation_Chanson_Autorite']);
                 let id = data[i]['Id_Chanson']
 
                 // Find frequent artists
@@ -123,8 +122,6 @@ class Chord {
             }
         }
 
-        let vm = this
-
         Object.values(songs).forEach(s => {
             if (
                 s.parent_id != "" &&
@@ -134,16 +131,19 @@ class Chord {
                 s.year <= this.dateRange[1] &&
                 (this.artist === null || s.artist.includes(this.artist))
             ) {
-                let otherCountry = this.countries["Autres"].key;
+
+                let otherCountry1 = this.countries["Autres (1)"].key;
+                let otherCountry2 = this.countries["Autres (2)"].key;
                 
-                let destinationCountryText = s.country_origin;
-                let destinationCountry = (destinationCountryText != "" && this.countries[destinationCountryText]) ? this.countries[destinationCountryText].key : otherCountry;
-
+                let destinationCountryText = `${s.country_origin} (2)`;
+                let destinationCountry = (destinationCountryText != "" && this.countries[destinationCountryText]) ? this.countries[destinationCountryText].key : otherCountry2;
+                
                 let parentSong = this.uniques[s.parent_id];
-                let parentCountryText = parentSong.country_origin;
-                let originCountry = (parentCountryText != "" && this.countries[parentCountryText]) ? this.countries[parentCountryText].key : otherCountry;
-
+                let parentCountryText = `${parentSong.country_origin} (1)`;
+                let originCountry = (parentCountryText != "" && this.countries[parentCountryText]) ? this.countries[parentCountryText].key : otherCountry1;
+                
                 matrix[originCountry][destinationCountry]++;
+                matrix[destinationCountry][originCountry]++;
             }
         });
 
@@ -154,6 +154,7 @@ class Chord {
         
         var countries = {};
         var colors =  ["#3366cc", "#dc3912", "#ff9900", "#109618", "#990099", "#0099c6", "#dd4477", "#66aa00", "#b82e2e", "#316395", "#994499", "#22aa99", "#aaaa11", "#6633cc", "#e67300", "#8b0707", "#651067", "#329262", "#5574a6", "#3b3eac"];
+        
         Object.values(songs).forEach(d => {
             let songCountry = d.country_origin;
             if (songCountry !== undefined && songCountry != "") {
@@ -186,10 +187,15 @@ class Chord {
         var lookup = {};
 
         countries.forEach((c, i) => {
-            lookup[c.country] = {
-                key: i,
+            lookup[`${c.country} (1)`] = {
+                key: i * 2,
                 color: colors[i],
-                country: c.country
+                country: `${c.country} (1)`
+            };
+            lookup[`${c.country} (2)`] = {
+                key: i * 2 + 1,
+                color: colors[i],
+                country: `${c.country} (2)`
             };
         });
 
@@ -206,7 +212,7 @@ class Chord {
     //that are the same except for the data.
     getDefaultLayout() {
         return d3.layout.chord()
-        .padding(0.03)
+        .padding(0.01)
         .sortSubgroups(d3.descending)
         .sortChords(d3.ascending);
     }
@@ -235,8 +241,8 @@ class Chord {
         let matrix = this.calculateMatrix(activeSongs);
 
         let isEmpty = true
-        for(let i = 0; i < this.maxCountries && isEmpty; i++) {
-            for(let j = 0; j < this.maxCountries && isEmpty; j++) {
+        for (let i = 0; i < this.maxCountries && isEmpty; i++) {
+            for (let j = 0; j < this.maxCountries && isEmpty; j++) {
                 if (matrix[i][j] > 0) {
                     isEmpty = false;
                 }
@@ -270,7 +276,6 @@ class Chord {
         //the enter selection is stored in a variable so we can
         //enter the <path>, <text>, and <title> elements as well
 
-        
         //Create the title tooltip for the new groups
         newGroups.append("title");
         
@@ -297,11 +302,8 @@ class Chord {
         //update the paths to match the layout
         groupG.select("path") 
             .transition()
-                .duration(500)
-                //.attr("opacity", 0.5) //optional, just to observe the transition////////////
-                .attrTween("d", this.arcTween( this.last_layout ))
-            // .transition().duration(100).attr("opacity", 1) //reset opacity//////////////
-            ;
+            .duration(500)
+            .attrTween("d", this.arcTween( this.last_layout ));
         
         //create the group labels
         newGroups.append("svg:text")
@@ -329,27 +331,27 @@ class Chord {
         //position group labels to match layout
         groupG.select("text")
             .transition()
-                .duration(100)
-                .attr("opacity", "1")
-                .attr("transform", function(d) {
-                    d.angle = (d.startAngle + d.endAngle) / 2;
-                    //store the midpoint angle in the data object
-                    
-                    return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
-                        " translate(" + (vm.outerRadius + 6) + ")" + 
-                        (d.angle > Math.PI ? " rotate(180)" : " rotate(0)"); 
-                    //include the rotate zero so that transforms can be interpolated
-                })
-                .attr("text-anchor", function (d) {
-                    return d.angle > Math.PI ? "end" : "begin";
-                });
+            .duration(100)
+            .attr("opacity", "1")
+            .attr("transform", function(d) {
+                d.angle = (d.startAngle + d.endAngle) / 2;
+                //store the midpoint angle in the data object
+                
+                return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
+                    " translate(" + (vm.outerRadius + 6) + ")" + 
+                    (d.angle > Math.PI ? " rotate(180)" : " rotate(0)"); 
+                //include the rotate zero so that transforms can be interpolated
+            })
+            .attr("text-anchor", function (d) {
+                return d.angle > Math.PI ? "end" : "begin";
+            });
         
         
         /* Create/update the chord paths */
         var chordPaths = this.g.selectAll("path.chord")
             .data(vm.layout.chords(), vm.chordKey );
-                //specify a key function to match chords
-                //between updates
+            //specify a key function to match chords
+            //between updates
             
         
         //create the new chord paths
@@ -396,9 +398,12 @@ class Chord {
         //update the path shape
         chordPaths.transition()
             .duration(500)
-            //.attr("opacity", 0.5) //optional, just to observe the transition
-            .style("fill", function (d) {
-                return vm.regions[d.source.index].color;
+            .attr("opacity", 0.8) //optional, just to observe the transition
+            .style("fill", function (d, i) {
+                if (vm.regions[d.source.index].name.includes('(1)')) {
+                    return vm.regions[d.source.index].color;
+                }
+                return vm.regions[d.target.index].color;
             })
             .attrTween("d", vm.chordTween(vm.last_layout))
             //.transition().duration(100).attr("opacity", 1) //reset opacity

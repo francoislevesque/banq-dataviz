@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        text {
+            font: 10px sans-serif;
+        }
+
+        .plot {
+            position: absolute;
+        }
+
+        #plot-canvas {
+            z-index: 2;
+        }
+
+        #axis-svg {
+            z-index: 1;
+        }
+
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: #000;
+            shape-rendering: crispEdges;
+        }
+
+        .tick line{
+            opacity: 0.2;
+        }
+    </style>
+</head>
+<body>
+    <a href="/scatter.html">Absolute</a>
+    <svg id="axis-svg" class="plot"></svg>
+    <canvas id="plot-canvas" class="plot"></canvas>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.12/d3.min.js" charset="utf-8"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.15/lodash.min.js" integrity="sha256-VeNaFBVDhoX3H+gJ37DpT/nTuZTdjYro9yBruHjVmoQ=" crossorigin="anonymous"></script>
+
+<script>
+
+d3.csv('./data/data.csv', function(error, data) {
+    init(data);
+});
+
+function init (data_) {
+
+    var artists = {};
+    var songs = {};
+
+    // Get artists
+    for (var i = 0, len = data_.length; i < len; i++) {
+        var id = data_[i]["Id_Autorite"];
+        if (artists[id] === undefined) {
+            artists[id] = {
+                id: id,
+                name: data_[i]["Forme_Retenue_Autorite"],
+                score_level_0: 0,
+                score_level_plus_1: 0,
+                score_level_minus_1: 0
+            }
+        }
+    }
+
+    // Get songs
+    for (var i = 0, len = data_.length; i < len; i++) {
+        var id = data_[i]["Id_Chanson"];
+        var authority_id = data_[i]["Id_Autorite"];
+        if (songs[id] === undefined) {
+            songs[id] = {
+                id: id,
+                parent_id: data_[i]["Id_Chanson_Parent"],
+                name: data_[i]["Titre_Chanson"],
+                authorities: [authority_id]
+            }
+        } else {
+            songs[id].authorities.push(authority_id)
+        }
+    }
+
+    // Get level 0 and level -1 scores
+    for (var i = 0, len = data_.length; i < len; i++) {
+        var id = data_[i]["Id_Chanson"];
+        var authority_id = data_[i]["Id_Autorite"];
+
+        // Level 0
+        artists[authority_id].score_level_0++;
+
+        var parent_song = songs[data_[i]["Id_Chanson_Parent"]];
+
+        if (parent_song) {
+            // Level -1
+            artists[authority_id].score_level_minus_1++;
+        }
+    }
+
+    // Get level +1 scores
+    Object.values(songs).forEach(function(song) {
+        var parent_song = songs[song.parent_id];
+
+        if (parent_song) {
+            parent_song.authorities.forEach(function(id) {
+                // Level +1
+                artists[id].score_level_plus_1++;
+            });
+        }
+    });
+
+    var data = Object.values(artists).filter(artist => artist.score_level_0 > 10).map((artist, i) => {
+        return {
+            x: artist.score_level_minus_1 / artist.score_level_0,
+            y: artist.score_level_plus_1 / artist.score_level_0,
+            i: i,
+            size: artist.score_level_0 / 10,
+            label: artist.name,
+            selected: false
+        }
+    });
+
+    // constants
+    var numberPoints = data.length;
+    var subsetSize = 150;
+    var zoomEndDelay = 250;
+
+    // timeout function
+    var zoomEndTimeout;
+
+    // save the index of the currently selected point
+    var selectedPoint;
+
+    // define all size variables
+    var fullWidth = 800;
+    var fullHeight = 800;
+    var margin = {top: 10, right: 10, bottom: 30, left: 30};
+    var width = fullWidth - margin.left - margin.right;
+    var height = fullHeight - margin.top - margin.bottom;
+
+    // create a quadtree for fast hit detection
+    var quadTree = d3.geom.quadtree(data);
+
+    // selected 250 random numbers -- this is the subset of points
+    // drawn during 'zoom' events
+    var randomIndex = _.sampleSize(_.range(numberPoints), subsetSize);
+
+    // the canvas is shifted by 1px to prevent any artefacts
+    // when the svg axis and the canvas overlap
+    var canvas = d3.select("#plot-canvas")
+        .attr("width", width - 1)
+        .attr("height", height - 1)
+        .style("transform", "translate(" + (margin.left + 1) +
+            "px" + "," + (margin.top + 1) + "px" + ")");
+
+    var svg = d3.select("#axis-svg")
+        .attr("width", fullWidth)
+        .attr("height", fullHeight)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," +
+            margin.top + ")");
+
+    // ranges, scales, axis, objects
+    var xRange = d3.extent(data, function(d) { return d.x });
+    var yRange = d3.extent(data, function(d) { return d.y });
+    console.log(yRange);
+
+    var xScale = d3.scale.linear()
+        .domain([xRange[0], xRange[1]])
+        .range([0, width]);
+
+    var yScale = d3.scale.linear()
+        .domain([yRange[0], yRange[1]])
+        .range([height, 0]);
+
+    var xAxis = d3.svg.axis()
+        .scale(xScale)
+        .innerTickSize(-height)
+        .outerTickSize(0)
+        .tickPadding(10)
+        .orient('bottom');
+
+    var yAxis = d3.svg.axis()
+        .scale(yScale)
+        .innerTickSize(-width)
+        .outerTickSize(0)
+        .orient('left');
+
+    // create zoom behaviour
+    var zoomBehaviour = d3.behavior.zoom()
+        .x(xScale)
+        .y(yScale)
+        .scaleExtent([1, 10])
+        .on("zoom", onZoom)
+        .on("zoomend", onZoomEnd);
+
+    // append x-axis, y-axis
+    var xAxisSvg = svg.append('g')
+        .attr('class', 'x axis')
+        .attr('transform', 'translate(0,' + height + ')')
+        .call(xAxis);
+
+    var yAxisSvg = svg.append('g')
+        .attr('class', 'y axis')
+        .call(yAxis);
+
+    // on onclick handler
+    canvas.on("click", onClick);
+
+    // add zoom behaviour
+    canvas.call(zoomBehaviour);
+
+    // get the canvas drawing context
+    var context = canvas.node().getContext('2d');
+
+    draw();
+
+    function onClick() {
+        var mouse = d3.mouse(this);
+
+        // map the clicked point to the data space
+        var xClicked = xScale.invert(mouse[0]);
+        var yClicked = yScale.invert(mouse[1]);
+
+        // find the closest point in the dataset to the clicked point
+        var closest = quadTree.find([xClicked, yClicked]);
+
+        // map the co-ordinates of the closest point to the canvas space
+        var dX = xScale(closest.x);
+        var dY = yScale(closest.y);
+
+        // register the click if the clicked point is in the radius of the point
+        var distance = euclideanDistance(mouse[0], mouse[1], dX, dY);
+
+        if(distance < closest.size) {
+            if(selectedPoint) {
+                data[selectedPoint].selected = false;
+            }
+            closest.selected = true;
+            selectedPoint = closest.i;
+
+            // redraw the points
+            draw();
+
+            alert(closest.label);
+        }
+    }
+
+    function onZoom() {
+        clearTimeout(zoomEndTimeout);
+        draw(randomIndex);
+        xAxisSvg.call(xAxis);
+        yAxisSvg.call(yAxis);
+    }
+
+    function onZoomEnd() {
+        // when zooming is stopped, create a delay before
+        // redrawing the full plot
+        zoomEndTimeout = setTimeout(function() {
+            draw();
+        }, zoomEndDelay);
+    }
+
+    // the draw function draws the full dataset if no index
+    // parameter supplied, otherwise it draws a subset according
+    // to the indices in the index parameter
+    function draw(index) {
+        var active;
+
+        context.clearRect(0, 0, fullWidth, fullHeight);
+        context.fillStyle = 'steelblue';
+        context.strokeWidth = 1;
+        context.strokeStyle = 'white';
+
+        // if an index parameter is supplied, we only want to draw points
+        // with indices in that array
+        if(index) {
+            index.forEach(function(i) {
+                var point = data[i];
+                if(!point.selected) {
+                    drawPoint(point);
+                }
+                else {
+                    active = point;
+                }
+            });
+        }
+        // draw the full dataset otherwise
+        else {
+            data.forEach(function(point) {
+                if(!point.selected) {
+                    drawPoint(point);
+                }
+                else {
+                    active = point;
+                }
+            });
+        }
+
+        // ensure that the actively selected point is drawn last
+        // so it appears at the top of the draw order
+        if(active) {
+            context.fillStyle = 'red';
+            drawPoint(active);
+            context.fillStyle = 'steelblue';
+        }
+    }
+
+    function drawPoint(point) {
+        var r = point.size;
+        var cx = xScale(point.x);
+        var cy = yScale(point.y);
+
+        // NOTE; each point needs to be drawn as its own path
+        // as every point needs its own stroke. you can get an insane
+        // speed up if the path is closed after all the points have been drawn
+        // and don't mind points not having a stroke
+        context.beginPath();
+        context.arc(cx, cy, r, 0, 2 * Math.PI);
+        context.closePath();
+        context.fill();
+        context.stroke();
+    }
+
+    function euclideanDistance(x1, y1, x2, y2) {
+        return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+    }
+}
+</script>
+</html>
